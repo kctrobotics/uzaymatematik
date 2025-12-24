@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matematik Uzay Avcısı - Çoklu Mod</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CC9F0;
+            --secondary-color: #F72585;
+            --accent-color: #4361EE;
+            --success-color: #4895ef;
+            --bg-color: #0b0d17;
+            --text-color: #fff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Fredoka', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- ORTAK STİLLER --- */
+
+        /* Yıldızlar */
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s infinite ease-in-out;
+            z-index: 0;
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Oyun Alanı */
+        #game-area {
+            flex: 1;
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        /* UI Paneli */
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            /* PC Default */
+            z-index: 20;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+            transition: all 0.3s;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Meteorlar (Default PC Size) */
+        .target {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #4CC9F0, #4361EE);
+            box-shadow: 0 0 15px rgba(76, 201, 240, 0.6);
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            animation: float linear;
+            cursor: pointer;
+        }
+
+        .target.type-2 {
+            background: radial-gradient(circle at 30% 30%, #F72585, #B5179E);
+            box-shadow: 0 0 15px rgba(247, 37, 133, 0.6);
+        }
+
+        .target.type-3 {
+            background: radial-gradient(circle at 30% 30%, #4caf50, #2e7d32);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+        }
+
+        /* Kontrol Paneli (Default PC) */
+        #control-panel {
+            min-height: 100px;
+            background: rgba(11, 13, 23, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            z-index: 30;
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        #answer-input {
+            width: 200px;
+            padding: 15px;
+            font-size: 1.5rem;
+            border: 2px solid var(--accent-color);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            font-family: 'Fredoka', sans-serif;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        #answer-input:focus {
+            border-color: var(--secondary-color);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #send-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: linear-gradient(45deg, var(--accent-color), var(--secondary-color));
+            border: none;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        #send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #send-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* --- AKILLI TAHTA MODU ÖZELLEŞTİRMELERİ --- */
+        body.smart-board #ui-panel {
+            font-size: 2rem;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+        }
+
+        body.smart-board .target {
+            width: 120px;
+            height: 120px;
+            font-size: 2rem;
+        }
+
+        body.smart-board #control-panel {
+            flex-direction: column;
+            gap: 15px;
+            min-height: 280px;
+            /* Klavye için */
+        }
+
+        body.smart-board #answer-input {
+            width: 300px;
+            font-size: 2rem;
+        }
+
+        /* Sanal Klavye (Gizli Default) */
+        #numpad {
+            display: none;
+        }
+
+        body.smart-board #numpad {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            /* Daha sıkışık */
+            width: 100%;
+            max-width: 600px;
+            /* İstek üzerine küçültüldü (800'den 600'e) */
+        }
+
+        /* PC modunda gönder butonu, SB modunda Action butonu klavyede var */
+        body.smart-board #send-btn {
+            display: none;
+        }
+
+        .pad-btn {
+            background: linear-gradient(145deg, #1e2130, #161821);
+            color: white;
+            font-size: 1.5rem;
+            /* Font küçültüldü */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 0;
+            /* Padding azaltıldı */
+            cursor: pointer;
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .pad-btn:active {
+            transform: scale(0.95);
+            background: #4361EE;
+        }
+
+        .pad-btn.action-btn {
+            background: linear-gradient(45deg, var(--secondary-color), #B5179E);
+            grid-column: span 1;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .pad-btn.clear-btn {
+            background: #ff4757;
+            font-size: 1rem;
+        }
+
+        /* Menüler */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 13, 23, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .menu-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #4CC9F0, #F72585);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mode-select-btn {
+            display: block;
+            width: 100%;
+            margin: 15px 0;
+            padding: 20px;
+            font-size: 1.5rem;
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: white;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .mode-select-btn:hover {
+            background: var(--primary-color);
+            color: var(--bg-color);
+        }
+
+        .play-btn {
+            background: linear-gradient(45deg, #4361EE, #F72585);
+            padding: 15px 50px;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 5px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .level-select {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .level-btn {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .level-btn.active {
+            background: var(--primary-color);
+            color: var(--bg-color);
+        }
+
+        /* Efektler */
+        .explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, white, transparent);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: explode 0.5s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(0.5);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .feedback-text {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 0 0 5px black;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(2px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="stars-container"></div>
+
+    <!-- UI -->
+    <div id="ui-panel">
+        <div class="stat-box">Puan: <span id="score-display">0</span></div>
+        <div class="stat-box">Can: <span id="lives-display">❤️❤️❤️</span></div>
+    </div>
+
+    <!-- Oyun Alanı -->
+    <div id="game-area"></div>
+
+    <!-- Kontrol -->
+    <div id="control-panel">
+        <input type="text" id="answer-input" placeholder="?" autocomplete="off">
+        <button id="send-btn">Gönder 🚀</button>
+
+        <!-- Sanal Klavye (Sadece Akıllı Tahta Modunda Görünür) -->
+        <div id="numpad">
+            <button class="pad-btn" onclick="typeNum(1)">1</button>
+            <button class="pad-btn" onclick="typeNum(2)">2</button>
+            <button class="pad-btn" onclick="typeNum(3)">3</button>
+            <button class="pad-btn" onclick="typeNum(4)">4</button>
+            <button class="pad-btn" onclick="typeNum(5)">5</button>
+            <button class="pad-btn clear-btn" onclick="clearInput()">SIL</button>
+
+            <button class="pad-btn" onclick="typeNum(6)">6</button>
+            <button class="pad-btn" onclick="typeNum(7)">7</button>
+            <button class="pad-btn" onclick="typeNum(8)">8</button>
+            <button class="pad-btn" onclick="typeNum(9)">9</button>
+            <button class="pad-btn" onclick="typeNum(0)">0</button>
+            <button class="pad-btn action-btn" onclick="checkAnswer()">GÖNDER</button>
+        </div>
+    </div>
+
+    <!-- Cihaz Seçim Ekranı -->
+    <div id="mode-select-screen" class="overlay">
+        <div class="menu-box">
+            <h1>Hoşgeldiniz!</h1>
+            <p>Nereden oynuyorsunuz?</p>
+            <button class="mode-select-btn" onclick="selectMode('pc')">💻 Bilgisayar (Klavye Modu)</button>
+            <button class="mode-select-btn" onclick="selectMode('sb')">🎓 Akıllı Tahta (Dokunmatik Mod)</button>
+        </div>
+    </div>
+
+    <!-- Başlangıç Ekranı -->
+    <div id="start-screen" class="overlay hidden">
+        <div class="menu-box">
+            <h1>Matematik<br>Uzay Avcısı</h1>
+
+            <div class="level-select">
+                <button class="level-btn active" onclick="selectLevel(1)">1. Seviye<br><small>(20)</small></button>
+                <button class="level-btn" onclick="selectLevel(2)">2. Seviye<br><small>(50)</small></button>
+            </div>
+
+            <button class="play-btn" onclick="startGame()">OYNA 🎵</button>
+        </div>
+    </div>
+
+    <!-- Oyun Bitti Ekranı -->
+    <div id="game-over-screen" class="overlay hidden">
+        <div class="menu-box">
+            <h1>Oyun Bitti!</h1>
+            <p>Puanın:</p>
+            <h2 id="final-score" style="font-size: 4rem; margin: 10px 0; color: var(--secondary-color);">0</h2>
+            <button class="play-btn" onclick="resetGame()">Tekrar Oyna</button>
+        </div>
+    </div>
+
+    <script>
+        // Global Değişkenler
+        let isSmartBoard = false;
+        let score = 0;
+        let lives = 3;
+        let gameActive = false;
+        let currentLevel = 1;
+        let targets = [];
+        let gameLoopId;
+
+        // Müzik
+        let audioCtx;
+        let nextNoteTime = 0.0;
+        let beatCount = 0;
+        const tempo = 100;
+        const scheduleAheadTime = 0.1;
+        const lookahead = 25.0;
+        let timerID;
+
+        // DOM
+        const body = document.body;
+        const gameArea = document.getElementById('game-area');
+        const answerInput = document.getElementById('answer-input');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const starsContainer = document.getElementById('stars-container');
+
+        // Mod Seçimi
+        function selectMode(mode) {
+            if (mode === 'sb') {
+                isSmartBoard = true;
+                body.classList.add('smart-board');
+                answerInput.readOnly = true; // Klavye açılmasın sanal klavye kullanılsın
+            } else {
+                isSmartBoard = false;
+                body.classList.remove('smart-board');
+                answerInput.readOnly = false;
+                answerInput.focus();
+            }
+            document.getElementById('mode-select-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        // Klavye Fonksiyonları
+        function typeNum(num) {
+            if (!gameActive) return;
+            answerInput.value += num;
+        }
+
+        function clearInput() {
+            answerInput.value = '';
+        }
+
+        // Yıldızlar
+        function createStars() {
+            for (let i = 0; i < 80; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.top = Math.random() * 100 + 'vh';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+        createStars();
+
+        function selectLevel(lvl) {
+            currentLevel = lvl;
+            document.querySelectorAll('.level-btn').forEach((btn, i) => {
+                if (i + 1 === lvl) btn.classList.add('active'); else btn.classList.remove('active');
+            });
+        }
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            targets = [];
+            gameActive = true;
+            updateUI();
+
+            gameArea.innerHTML = '';
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            answerInput.value = '';
+            if (!isSmartBoard) answerInput.focus();
+
+            // Ses
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            nextNoteTime = audioCtx.currentTime + 0.5;
+            beatCount = 0;
+            scheduler();
+
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function gameOver() {
+            gameActive = false;
+            clearTimeout(timerID);
+            cancelAnimationFrame(gameLoopId);
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+        }
+
+        // Müzik Mantığı
+        function scheduler() {
+            if (!gameActive) return;
+            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+                scheduleNote(beatCount, nextNoteTime);
+                nextNoteTime += 60.0 / tempo;
+                beatCount++;
+            }
+            timerID = setTimeout(scheduler, lookahead);
+        }
+
+        function scheduleNote(beat, time) {
+            const step = beat % 8;
+            if (step % 2 === 0) playKick(time);
+            if (step === 2 || step === 6) playSnare(time);
+            if (step % 1 === 0) playHiHat(time);
+            playBass(time, step);
+            playMelody(time, step);
+
+            // Spawn
+            let spawnRate = 4;
+            if (currentLevel === 2) spawnRate = 2;
+            if (beat % spawnRate === 0 && beat > 0) {
+                const delay = (time - audioCtx.currentTime) * 1000;
+                setTimeout(spawnTarget, Math.max(0, delay));
+            }
+        }
+
+        // Sesler (Synth)
+        function playKick(t) {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.frequency.setValueAtTime(150, t);
+            osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+            g.gain.setValueAtTime(0.8, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 0.5);
+        }
+        function playSnare(t) {
+            const b = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+            const d = b.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            const n = audioCtx.createBufferSource();
+            n.buffer = b;
+            const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000;
+            const g = audioCtx.createGain(); g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            n.connect(f); f.connect(g); g.connect(audioCtx.destination);
+            n.start(t);
+        }
+        function playHiHat(t) {
+            const o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(8000, t);
+            const g = audioCtx.createGain(); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+            const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+            o.connect(f); f.connect(g); g.connect(audioCtx.destination);
+            o.start(t); o.stop(t + 0.05);
+        }
+        function playBass(t, s) {
+            const o = audioCtx.createOscillator(); o.type = 'sawtooth';
+            let freq = 65.41;
+            if (s > 3) freq = 87.31; if (s > 5) freq = 98.00;
+            o.frequency.setValueAtTime(freq, t);
+            const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(100, t + 0.4);
+            const g = audioCtx.createGain(); g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.4);
+            o.connect(f); f.connect(g); g.connect(audioCtx.destination);
+            o.start(t); o.stop(t + 0.4);
+        }
+        function playMelody(t, s) {
+            const map = [1, 0, 1, 0, 1, 1, 0, 0];
+            if (map[s] !== 1) return;
+            const o = audioCtx.createOscillator(); o.type = 'triangle';
+            const notes = [261.63, 311.13, 349.23, 392.00, 466.16, 523.25];
+            o.frequency.setValueAtTime(notes[(s * 3) % notes.length], t);
+            const g = audioCtx.createGain(); g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(t); o.stop(t + 0.6);
+        }
+        function playSfx(type) {
+            if (!audioCtx) return;
+            const t = audioCtx.currentTime;
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+
+            if (type === 'success') {
+                o.type = 'sine';
+                o.frequency.setValueAtTime(880, t);
+                o.frequency.exponentialRampToValueAtTime(1760, t + 0.1);
+                g.gain.setValueAtTime(0.3, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            } else {
+                o.type = 'sawtooth';
+                o.frequency.setValueAtTime(150, t);
+                o.frequency.linearRampToValueAtTime(50, t + 0.3);
+                g.gain.setValueAtTime(0.5, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            }
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(t); o.stop(t + 0.3);
+        }
+
+        // Oyun Mantığı
+        function generateProblem() {
+            let n1, n2, op, ans;
+            if (currentLevel === 1) {
+                if (Math.random() > 0.5) {
+                    n1 = Math.floor(Math.random() * 15) + 1; n2 = Math.floor(Math.random() * (20 - n1)) + 1; op = '+'; ans = n1 + n2;
+                } else {
+                    n1 = Math.floor(Math.random() * 19) + 2; n2 = Math.floor(Math.random() * (n1 - 1)) + 1; op = '-'; ans = n1 - n2;
+                }
+            } else {
+                const r = Math.random();
+                if (r < 0.4) { n1 = Math.floor(Math.random() * 40) + 1; n2 = Math.floor(Math.random() * (50 - n1)) + 1; op = '+'; ans = n1 + n2; }
+                else if (r < 0.7) { n1 = Math.floor(Math.random() * 49) + 2; n2 = Math.floor(Math.random() * n1); op = '-'; ans = n1 - n2; }
+                else { n1 = Math.floor(Math.random() * 8) + 2; n2 = Math.floor(Math.random() * 8) + 2; op = '×'; ans = n1 * n2; }
+            }
+            return { text: `${n1} ${op} ${n2}`, value: ans };
+        }
+
+        function spawnTarget() {
+            const p = generateProblem();
+            const el = document.createElement('div');
+            el.className = 'target';
+            const type = Math.floor(Math.random() * 3) + 1;
+            if (type > 1) el.classList.add(`type-${type}`);
+            el.textContent = p.text;
+            // Pozisyon
+            const left = Math.random() * 80 + 10;
+            const startY = isSmartBoard ? -120 : -100;
+            el.style.left = `${left}%`;
+            el.style.top = `${startY}px`;
+            gameArea.appendChild(el);
+
+            targets.push({
+                element: el,
+                answer: p.value,
+                y: startY,
+                speed: (Math.random() * 0.5 + 0.5) * (1 + (score / 100))
+            });
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const t = targets[i];
+                t.y += t.speed;
+                t.element.style.top = `${t.y}px`;
+                if (t.y > gameArea.clientHeight - 50) {
+                    playSfx('error');
+                    lives--; updateUI();
+                    document.body.style.backgroundColor = '#590d22';
+                    setTimeout(() => document.body.style.backgroundColor = 'var(--bg-color)', 100);
+                    t.element.remove();
+                    targets.splice(i, 1);
+                    if (lives <= 0) gameOver();
+                }
+            }
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            scoreDisplay.innerText = score;
+            livesDisplay.innerText = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+        }
+
+        function checkAnswer() {
+            if (!gameActive) return;
+            const val = parseInt(answerInput.value);
+            if (isNaN(val)) return;
+
+            let hit = false;
+            let idx = -1;
+            let maxY = -1000;
+
+            targets.forEach((t, i) => {
+                if (t.answer === val && t.y > maxY) {
+                    maxY = t.y; idx = i;
+                }
+            });
+
+            if (idx !== -1) {
+                // Vurduk
+                hit = true;
+                const t = targets[idx];
+                const r = t.element.getBoundingClientRect();
+
+                // Efekt
+                const exp = document.createElement('div');
+                exp.className = 'explosion';
+                exp.style.left = (r.left + r.width / 2 - 50) + 'px';
+                exp.style.top = (r.top - 50) + 'px';
+                gameArea.appendChild(exp);
+                setTimeout(() => exp.remove(), 500);
+
+                const fb = document.createElement('div');
+                fb.className = 'feedback-text';
+                fb.innerText = "Harika!";
+                fb.style.color = '#4cc9f0';
+                fb.style.left = r.left + 'px';
+                fb.style.top = (r.top - 20) + 'px';
+                gameArea.appendChild(fb);
+                setTimeout(() => fb.remove(), 1000);
+
+                playSfx('success');
+                score += 10;
+                updateUI();
+                t.element.remove();
+                targets.splice(idx, 1);
+
+                answerInput.style.borderColor = 'var(--success-color)';
+                setTimeout(() => answerInput.style.borderColor = 'var(--accent-color)', 200);
+            } else {
+                playSfx('error');
+                answerInput.classList.add('shake');
+                setTimeout(() => answerInput.classList.remove('shake'), 500);
+            }
+            answerInput.value = '';
+            if (!isSmartBoard) answerInput.focus();
+        }
+
+        document.getElementById('send-btn').addEventListener('click', checkAnswer);
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkAnswer();
+        });
+
+    </script>
+</body>
+
+</html>
